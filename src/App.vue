@@ -38,7 +38,7 @@ const hasCircle = [1, 3, 7, 9]
       @click="menuVisible = false"
     />
     <Transition name="menu-fade">
-      <SideMenu v-show="menuVisible" class="absolute right-0 top-0 z-110" />
+      <SideMenu v-show="menuVisible" class="fixed right-0 top-0 z-110" />
     </Transition>
   </main>
 </template>
