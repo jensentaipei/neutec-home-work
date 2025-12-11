@@ -10,9 +10,9 @@ const blinkingBlocks = [3, 5, 9]
 const hasCircle = [1, 3, 7, 9]
 const isBallToTarget = ref(false)
 const targetPos = ref({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
-
 const blockRefs = ref<Record<number, Element | null>>({})
 const circleStyles = ref<Record<number, { transform: string }>>({})
+const animateMode = ref<'CSS' | 'Web Animations API' | 'requestAnimationFrame'>('CSS')
 
 function setBlockRef(el: Element | ComponentPublicInstance | null, n: number) {
   if (el) {
@@ -62,7 +62,7 @@ watch(
         </button>
       </div>
       <div class="p-2">
-        <ul>
+        <ul class="flex flex-col gap-2">
           <li>
             <div class="flex items-center gap-2">
               <span>Ball to target: </span>
@@ -71,6 +71,20 @@ watch(
               <input type="number" v-model.number="targetPos.x" class="w-20 border" />
               <span>y: </span>
               <input type="number" v-model.number="targetPos.y" class="w-20 border" />
+            </div>
+          </li>
+          <li>
+            <div class="flex">
+              <span class="mr-2">Animate Mode: </span>
+              <select v-model="animateMode" class="border">
+                <option
+                  v-for="mode in ['CSS', 'Web Animations API', 'requestAnimationFrame']"
+                  :key="mode"
+                  :value="mode"
+                >
+                  {{ mode }}
+                </option>
+              </select>
             </div>
           </li>
         </ul>
@@ -83,6 +97,7 @@ watch(
             :is-blinking="blinkingBlocks.includes(n)"
             :ref="(el) => setBlockRef(el, n)"
             :class="{ 'z-20!': isBallToTarget && hasCircle.includes(n) }"
+            :animate-mode="animateMode"
             :style="{ zIndex: 10 - n }"
           >
             <LittleCircle

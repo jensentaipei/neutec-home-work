@@ -1,12 +1,78 @@
 <script setup lang="ts">
-defineProps<{
-  isBlinking?: boolean
-}>()
+import { onMounted, ref, watch } from 'vue'
+
+const props = withDefaults(
+  defineProps<{
+    isBlinking?: boolean
+    animateMode?: 'CSS' | 'Web Animations API' | 'requestAnimationFrame'
+  }>(),
+  {
+    isBlinking: false,
+    animateMode: 'CSS',
+  },
+)
+
+const bgLayerRef = ref<HTMLElement | null>(null)
+let waapiAni: Animation | null = null
+let rafId: number | null = null
+let currentOpacity = 0.6
+let speed = 0.02
+function runRafAni() {
+  if (!bgLayerRef.value) return
+
+  currentOpacity += speed
+
+  if (currentOpacity >= 1 || currentOpacity <= 0.6) {
+    speed = -speed
+  }
+
+  bgLayerRef.value.style.opacity = currentOpacity.toString()
+
+  rafId = requestAnimationFrame(runRafAni)
+}
+
+function runWebAnimationsAPI() {
+  if (!bgLayerRef.value) return
+
+  const keyframes = [{ opacity: '1' }, { opacity: '0.6' }, { opacity: '1' }]
+  const options: KeyframeAnimationOptions = {
+    duration: 500,
+    iterations: Infinity,
+    easing: 'ease-in-out',
+  }
+
+  waapiAni = bgLayerRef.value.animate(keyframes, options)
+}
+
+function updateAnimate() {
+  if (!bgLayerRef.value || !props.isBlinking) return
+
+  if (rafId) cancelAnimationFrame(rafId)
+  waapiAni?.cancel()
+  currentOpacity = 0.6
+  speed = 0.02
+
+  if (props.animateMode === 'Web Animations API') {
+    runWebAnimationsAPI()
+  } else if (props.animateMode === 'requestAnimationFrame') {
+    runRafAni()
+  }
+}
+
+onMounted(() => {
+  updateAnimate()
+})
+
+watch([() => props.isBlinking, () => props.animateMode], updateAnimate)
 </script>
 
 <template>
   <div class="base-block relative">
-    <div class="absolute inset-0 bg-layer" :class="{ 'animate-blink': isBlinking }" />
+    <div
+      ref="bgLayerRef"
+      class="absolute inset-0 bg-layer"
+      :class="{ 'animate-blink': isBlinking && animateMode === 'CSS' }"
+    />
 
     <div class="relative flex items-center justify-center size-full z-10">
       <slot />
