@@ -10,22 +10,21 @@ const blinkingBlocks = [3, 5, 9]
 const hasCircle = [1, 3, 7, 9]
 const isBallToTarget = ref(false)
 const targetPos = ref({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
-const blockRefs = ref<Record<number, Element | null>>({})
+const circleRefs = ref<Record<number, Element | null>>({})
 const circleStyles = ref<Record<number, { transform: string }>>({})
 const animateMode = ref<'CSS' | 'Web Animations API' | 'requestAnimationFrame'>('CSS')
 
-function setBlockRef(el: Element | ComponentPublicInstance | null, n: number) {
+function setCircleRef(el: Element | ComponentPublicInstance | null, n: number) {
   if (el) {
-    blockRefs.value[n] = '$el' in el ? (el.$el as Element) : (el as Element)
+    circleRefs.value[n] = '$el' in el ? (el.$el as Element) : (el as Element)
   }
 }
-
 function calculateMoves() {
   hasCircle.forEach((n) => {
-    const currentBlock = blockRefs.value[n]
-    if (!currentBlock) return
+    const currentCircle = circleRefs.value[n]
+    if (!currentCircle) return
 
-    const currentRect = currentBlock.getBoundingClientRect()
+    const currentRect = currentCircle.getBoundingClientRect()
     const currentX = currentRect.left + currentRect.width / 2
     const currentY = currentRect.top + currentRect.height / 2
 
@@ -91,24 +90,23 @@ watch(
       </div>
       <div class="flex-1 bg-gray-200 flex items-center justify-center">
         <div class="grid grid-cols-3 gap-1 w-full p-4">
-          <GridBlock
+          <div
             v-for="n in 9"
             :key="n"
-            :is-blinking="blinkingBlocks.includes(n)"
-            :ref="(el) => setBlockRef(el, n)"
-            :class="{ 'z-20!': isBallToTarget && hasCircle.includes(n) }"
-            :animate-mode="animateMode"
-            :style="{ zIndex: 10 - n }"
+            class="flex items-center justify-center h-25 w-full relative"
           >
+            <GridBlock :is-blinking="blinkingBlocks.includes(n)" :animate-mode="animateMode" />
             <LittleCircle
               v-if="hasCircle.includes(n)"
+              :ref="(el) => setCircleRef(el, n)"
+              class="absolute z-10"
               :class="{
                 'animate-circle': !isBallToTarget,
                 'transition-transform duration-500 ease-out will-change-transform': isBallToTarget,
               }"
               :style="circleStyles[n]"
             />
-          </GridBlock>
+          </div>
         </div>
       </div>
     </div>
