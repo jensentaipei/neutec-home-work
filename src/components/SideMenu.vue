@@ -33,9 +33,10 @@ function buildPathMap(nodes: MenuNode[], currentPath: string[] = []) {
 }
 
 async function fetchMenuData(bigData = false) {
-  const dataUrl = bigData ? '/BigMenuData.json' : '/MenuData.json'
+  const baseUrl = import.meta.env.BASE_URL
+  const path = bigData ? 'BigMenuData.json' : 'MenuData.json'
   clear()
-  const r = await customFetch<MenuNode[]>(dataUrl)
+  const r = await customFetch<MenuNode[]>(baseUrl + path)
   menuData.value = r
   buildPathMap(r)
 }
