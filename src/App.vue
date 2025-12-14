@@ -4,6 +4,7 @@ import SideMenu from '@/components/SideMenu.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
 import GridBlock from '@/components/GridBlock.vue'
 import LittleCircle from '@/components/LittleCircle.vue'
+import { AnimationModeEnum } from '@/types/index.ts'
 
 const menuVisible = ref(false)
 const blinkingBlocks = [3, 5, 9]
@@ -12,13 +13,16 @@ const isBallToTarget = ref(false)
 const targetPos = ref({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
 const circleRefs = ref<Record<number, Element | null>>({})
 const circleStyles = ref<Record<number, { transform: string }>>({})
-const animateMode = ref<'CSS' | 'Web Animations API' | 'requestAnimationFrame'>('CSS')
+const circleWaapiAniArr = ref<Animation[]>(Array(hasCircle.length).fill(null))
+const circleRafIdArr = ref<number[]>(Array(hasCircle.length).fill(0))
+const animateMode = ref<AnimationModeEnum>(AnimationModeEnum.CSS)
 
 function setCircleRef(el: Element | ComponentPublicInstance | null, n: number) {
   if (el) {
     circleRefs.value[n] = '$el' in el ? (el.$el as Element) : (el as Element)
   }
 }
+
 function calculateMoves() {
   hasCircle.forEach((n) => {
     const currentCircle = circleRefs.value[n]
@@ -31,21 +35,61 @@ function calculateMoves() {
     const deltaX = targetPos.value.x - currentX
     const deltaY = targetPos.value.y - currentY
 
-    circleStyles.value[n] = {
-      transform: `translate(${deltaX}px, ${deltaY}px)`,
+    if (animateMode.value === AnimationModeEnum.WebAnimationsAPI) {
+      const animation = currentCircle.animate(
+        [{ transform: 'translate(0, 0)' }, { transform: `translate(${deltaX}px, ${deltaY}px)` }],
+        {
+          duration: 500,
+          fill: 'forwards',
+          easing: 'ease-out',
+        },
+      )
+      circleWaapiAniArr.value[n] = animation
+    } else if (animateMode.value === AnimationModeEnum.CSS) {
+      circleStyles.value[n] = {
+        transform: `translate(${deltaX}px, ${deltaY}px)`,
+      }
+    } else if (animateMode.value === AnimationModeEnum.RequestAnimationFrame) {
+      const duration = 500
+      const startTime = performance.now()
+
+      function animate(currentTime: number) {
+        const diff = currentTime - startTime
+        const progress = Math.min(diff / duration, 1)
+
+        const x = deltaX * progress
+        const y = deltaY * progress
+
+        circleStyles.value[n] = {
+          transform: `translate(${x}px, ${y}px)`,
+        }
+
+        if (progress < 1) {
+          circleRafIdArr.value[n] = requestAnimationFrame(animate)
+        }
+      }
+
+      circleRafIdArr.value[n] = requestAnimationFrame(animate)
     }
   })
 }
 
 watch(
   [isBallToTarget, targetPos],
-  async () => {
-    await nextTick()
+  async (_newVal, _oldVal, onCleanup) => {
+    let isCancelled = false
 
-    if (!isBallToTarget.value) {
-      circleStyles.value = {}
-      return
-    }
+    onCleanup(() => {
+      isCancelled = true
+    })
+
+    circleStyles.value = {}
+    circleWaapiAniArr.value.forEach((ani) => ani?.cancel())
+    circleRafIdArr.value.forEach((id) => cancelAnimationFrame(id))
+
+    await nextTick()
+    if (isCancelled || !isBallToTarget.value) return
+
     calculateMoves()
   },
   { deep: true },
@@ -102,7 +146,8 @@ watch(
               class="absolute z-10"
               :class="{
                 'animate-circle': !isBallToTarget,
-                'transition-transform duration-500 ease-out will-change-transform': isBallToTarget,
+                'transition-transform duration-500 ease-out will-change-transform':
+                  isBallToTarget && animateMode === AnimationModeEnum.CSS,
               }"
               :style="circleStyles[n]"
             />

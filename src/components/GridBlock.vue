@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { AnimationModeEnum } from '@/types/index.ts'
 
 const props = withDefaults(
   defineProps<{
     isBlinking?: boolean
-    animateMode?: 'CSS' | 'Web Animations API' | 'requestAnimationFrame'
+    animateMode?: AnimationModeEnum
   }>(),
   {
     isBlinking: false,
-    animateMode: 'CSS',
+    animateMode: AnimationModeEnum.CSS,
   },
 )
 
@@ -52,9 +53,9 @@ function updateAnimate() {
   currentOpacity = 0.6
   speed = 0.02
 
-  if (props.animateMode === 'Web Animations API') {
+  if (props.animateMode === AnimationModeEnum.WebAnimationsAPI) {
     runWebAnimationsAPI()
-  } else if (props.animateMode === 'requestAnimationFrame') {
+  } else if (props.animateMode === AnimationModeEnum.RequestAnimationFrame) {
     runRafAni()
   }
 }
