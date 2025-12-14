@@ -12,7 +12,6 @@ const hasCircle = [1, 3, 7, 9]
 const isBallToTarget = ref(false)
 const targetPos = ref({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
 const circleRefs = ref<Record<number, Element | null>>({})
-const circleStyles = ref<Record<number, { transform: string }>>({})
 const circleWaapiAniArr = ref<Animation[]>(Array(hasCircle.length).fill(null))
 const circleRafIdArr = ref<number[]>(Array(hasCircle.length).fill(0))
 const animateMode = ref<AnimationModeEnum>(AnimationModeEnum.CSS)
@@ -25,7 +24,7 @@ function setCircleRef(el: Element | ComponentPublicInstance | null, n: number) {
 
 function calculateMoves() {
   hasCircle.forEach((n) => {
-    const currentCircle = circleRefs.value[n]
+    const currentCircle = circleRefs.value[n] as HTMLElement | null
     if (!currentCircle) return
 
     const currentRect = currentCircle.getBoundingClientRect()
@@ -46,9 +45,7 @@ function calculateMoves() {
       )
       circleWaapiAniArr.value[n] = animation
     } else if (animateMode.value === AnimationModeEnum.CSS) {
-      circleStyles.value[n] = {
-        transform: `translate(${deltaX}px, ${deltaY}px)`,
-      }
+      currentCircle.style.transform = `translate(${deltaX}px, ${deltaY}px)`
     } else if (animateMode.value === AnimationModeEnum.RequestAnimationFrame) {
       const duration = 500
       const startTime = performance.now()
@@ -60,8 +57,8 @@ function calculateMoves() {
         const x = deltaX * progress
         const y = deltaY * progress
 
-        circleStyles.value[n] = {
-          transform: `translate(${x}px, ${y}px)`,
+        if (currentCircle) {
+          currentCircle.style.transform = `translate(${x}px, ${y}px)`
         }
 
         if (progress < 1) {
@@ -83,7 +80,11 @@ watch(
       isCancelled = true
     })
 
-    circleStyles.value = {}
+    Object.values(circleRefs.value).forEach((el) => {
+      if (el) {
+        ;(el as HTMLElement).style.transform = ''
+      }
+    })
     circleWaapiAniArr.value.forEach((ani) => ani?.cancel())
     circleRafIdArr.value.forEach((id) => cancelAnimationFrame(id))
 
@@ -97,7 +98,7 @@ watch(
 </script>
 
 <template>
-  <main class="relative h-screen w-screen bg-gray-50 overflow-hidden">
+  <main class="relative h-dvh w-dvw bg-gray-50 overflow-hidden">
     <div class="flex flex-col h-full">
       <div class="flex justify-end w-full p-5 gap-4">
         <button @click="menuVisible = !menuVisible">
@@ -149,7 +150,6 @@ watch(
                 'transition-transform duration-500 ease-out will-change-transform':
                   isBallToTarget && animateMode === AnimationModeEnum.CSS,
               }"
-              :style="circleStyles[n]"
             />
           </div>
         </div>
@@ -162,7 +162,11 @@ watch(
       @click="menuVisible = false"
     />
     <Transition name="menu-fade">
-      <SideMenu v-show="menuVisible" class="fixed right-0 top-0 z-110" />
+      <SideMenu
+        v-show="menuVisible"
+        :menu-visible="menuVisible"
+        class="fixed right-0 top-0 z-110"
+      />
     </Transition>
   </main>
 </template>

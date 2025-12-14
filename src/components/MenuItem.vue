@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, inject, type Ref } from 'vue'
+import type { MenuNode } from '@/types/index.ts'
 
-interface MenuNode {
-  key: string
-  text: string
-  children?: MenuNode[]
-}
-
-const { item, isOpen } = defineProps<{
+const { item, isOpen, menuVisible } = defineProps<{
   item: MenuNode
   isOpen?: boolean
+  menuVisible?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -20,23 +16,15 @@ const activeChildKey = ref('')
 const hasChildren = computed(() => item.children && item.children.length > 0)
 const expandedKeys = inject<Ref<Set<string>>>('expandedKeys')
 const infoRef = ref<HTMLElement | null>(null)
+const handleItemClick = inject<(key: string) => void>('handleItemClick')
 
 function handleChildToggle(key: string) {
   activeChildKey.value = activeChildKey.value === key ? '' : key
 }
 
-async function handleClick(event: MouseEvent) {
+async function handleClick() {
   emit('toggle', item.key)
-
-  const target = event.currentTarget as HTMLElement
-
-  await nextTick()
-
-  target.scrollIntoView({
-    behavior: 'smooth',
-    inline: 'center',
-    block: 'nearest',
-  })
+  handleItemClick?.(item.key)
 }
 
 watch(
@@ -50,17 +38,17 @@ watch(
 )
 
 watch(
-  () => expandedKeys?.value,
-  async (newKeys) => {
-    if (!newKeys) return
+  () => [expandedKeys?.value, menuVisible],
+  async () => {
+    if (!expandedKeys?.value || !menuVisible) return
 
     if (item.children) {
-      const childToOpen = item.children.find((child) => newKeys.has(child.key))
+      const childToOpen = item.children.find((child) => expandedKeys?.value.has(child.key))
       if (childToOpen) {
         activeChildKey.value = childToOpen.key
       }
     }
-    const lastId = [...newKeys].pop()
+    const lastId = [...expandedKeys?.value].pop()
 
     if (!lastId || item.key !== lastId) return
     await nextTick()
@@ -95,6 +83,7 @@ watch(
         :key="child.key"
         :item="child"
         :is-open="activeChildKey === child.key"
+        :menu-visible="menuVisible"
         @toggle="handleChildToggle"
       />
     </ul>

@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { nextTick, provide, ref, watch } from 'vue'
+import { nextTick, onMounted, provide, ref, watch } from 'vue'
 import MenuItem from './MenuItem.vue'
-import customFetch from '@/composable/customFetch'
+import useCustomFetch from '@/composable/useCustomFetch'
+import { storeToRefs } from 'pinia'
+import { useMenuStore } from '@/stores/useMenuStore'
+import type { MenuNode } from '@/types/index.ts'
 
-type MenuNode = {
-  key: string
-  text: string
-  children?: MenuNode[]
-}
+defineProps<{
+  menuVisible: boolean
+}>()
 
 const activeKey = ref('')
+const menuStore = useMenuStore()
+const { isBigData, forceActiveKey } = storeToRefs(menuStore)
 const menuData = ref<MenuNode[]>([])
-const isBigData = ref(false)
 const menuMap = new Map<string, { path: string[]; text: string }>()
 const expandedKeys = ref<Set<string>>(new Set())
-const forceActiveKey = ref('')
 provide('expandedKeys', expandedKeys)
-fetchMenuData()
 
 function handleToggle(key: string) {
   activeKey.value = activeKey.value === key ? '' : key
@@ -35,13 +35,13 @@ function buildPathMap(nodes: MenuNode[], currentPath: string[] = []) {
 async function fetchMenuData(bigData = false) {
   const baseUrl = import.meta.env.BASE_URL
   const path = bigData ? 'BigMenuData.json' : 'MenuData.json'
-  clear()
-  const r = await customFetch<MenuNode[]>(baseUrl + path)
+  const r = await useCustomFetch<MenuNode[]>(baseUrl + path)
   menuData.value = r
   buildPathMap(r)
 }
 
 watch(isBigData, (newVal) => {
+  clear()
   fetchMenuData(newVal)
 })
 
@@ -65,26 +65,40 @@ function selectKey(target: string) {
   expandedKeys.value = new Set(pathTarget.path)
 }
 
-watch(forceActiveKey, async (newKey) => {
+onMounted(async () => {
+  await fetchMenuData(isBigData.value)
+  handleForceSelect()
+})
+
+function handleForceSelect() {
+  if (forceActiveKey.value) {
+    selectKey(forceActiveKey.value)
+  }
+}
+
+function handleItemClick(key: string) {
+  forceActiveKey.value = key
+}
+provide('handleItemClick', handleItemClick)
+
+watch(forceActiveKey, async () => {
   activeKey.value = ''
   expandedKeys.value.clear()
 
   await nextTick()
-  if (newKey) {
-    selectKey(newKey)
-  }
+  handleForceSelect()
 })
 </script>
 
 <template>
-  <div class="h-screen w-64 bg-black p-4 opacity-90 text-white overflow-auto flex flex-col gap-2">
-    <label class="flex items-center gap-2 cursor-pointer">
+  <div class="h-dvh w-64 bg-black p-4 opacity-90 text-white overflow-auto flex flex-col gap-2">
+    <label class="flex items-center gap-2 shrink-0">
       <input type="checkbox" v-model="isBigData" class="w-4 h-4" />
       <span>Big Data</span>
     </label>
     <select
       v-model="forceActiveKey"
-      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 shrink-0"
     >
       <option disabled value="">select a option</option>
 
@@ -97,6 +111,7 @@ watch(forceActiveKey, async (newKey) => {
         v-for="item in menuData"
         :key="item.key"
         :item="item"
+        :menu-visible="menuVisible"
         :is-open="activeKey === item.key"
         @toggle="handleToggle"
       />
