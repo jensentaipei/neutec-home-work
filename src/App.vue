@@ -27,7 +27,10 @@ function calculateMoves() {
     const currentCircle = circleRefs.value[n] as HTMLElement | null
     if (!currentCircle) return
 
-    const currentRect = currentCircle.getBoundingClientRect()
+    const parentElement = currentCircle.parentElement
+    if (!parentElement) return
+
+    const currentRect = parentElement.getBoundingClientRect()
     const currentX = currentRect.left + currentRect.width / 2
     const currentY = currentRect.top + currentRect.height / 2
 
@@ -72,7 +75,7 @@ function calculateMoves() {
 }
 
 watch(
-  [isBallToTarget, targetPos],
+  [isBallToTarget, targetPos, animateMode],
   async (_newVal, _oldVal, onCleanup) => {
     let isCancelled = false
 
@@ -82,7 +85,8 @@ watch(
 
     Object.values(circleRefs.value).forEach((el) => {
       if (el) {
-        ;(el as HTMLElement).style.transform = ''
+        const element = el as HTMLElement
+        element.style.transform = ''
       }
     })
     circleWaapiAniArr.value.forEach((ani) => ani?.cancel())
